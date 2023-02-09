@@ -1,15 +1,12 @@
 import os
 import subprocess
-from osgeo import gdal
 import time
 import geopandas as gpd
 import glob
 import numpy as np
-import shutil
-import sys
-sys.path.append('C:/FUME/PopNetV2/data_prep/mainFunctions/') 
-from format_conversions import dbTOraster, shptoraster
-from basic import createFolder
+
+from mainFunctions.format_conversions import dbTOraster, shptoraster
+from mainFunctions.basic import createFolder
 
 def createTemplate(city, temp_shp_path, temp_tif_path, raster_file, gdal_rasterize_path):
     src_file = temp_shp_path + "/{0}_cs.geojson".format(city)
