@@ -1,0 +1,1 @@
+from .globalVariables import pguser, pghost, pgpassword, pgport
