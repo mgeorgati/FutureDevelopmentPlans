@@ -1,10 +1,10 @@
-import sys
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #from corine_processing import calculateCorine
 #from grids_creating import creatGrids
-from urban_atlas_processing import createTemplate, calculateUrbanAtlas
+
 #from casestudyboundaries_creating import initPostgis, initPgRouting, createBoundaries, createBBox
- 
-from config.globalVariables import gdal_rasterize_path, python_scripts_folder_path, ancillary_EUROdata_folder_path
+from urban_atlas_processing import createTemplate, calculateUrbanAtlas
 city = 'crc'
 year = 2018
 
@@ -29,6 +29,7 @@ createBoundaries = 'no'
 processCorine = 'no'
 createGrids = 'no'
 init_template = 'no' """
+
 processUrbanAtlas = 'yes'
 
 """

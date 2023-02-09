@@ -4,7 +4,6 @@ import time
 import geopandas as gpd
 import glob
 import numpy as np
-
 from mainFunctions.format_conversions import dbTOraster, shptoraster
 from mainFunctions.basic import createFolder
 
@@ -71,7 +70,7 @@ def calculateUrbanAtlas(city,year,ancillary_data_folder_path, temp_shp_path, tem
     for i in df['land_use'].unique().tolist(): #,'water'
         bdf = ndf.loc[ndf['land_use']== i]
         print(bdf)
-        bdf.to_postgis('{0}_ua_{2}_{1}'.format(city,i,year),engine)
+        #bdf.to_postgis('{0}_ua_{2}_{1}'.format(city,i,year),engine)
         factor = 'ua_{1}_{0}'.format(i,year)
         calcPercentage(cur, conn, city, factor)
         
