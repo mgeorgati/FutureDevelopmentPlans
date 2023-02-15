@@ -76,7 +76,7 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
         unique_id = row['fid_project']
         name = row['uniq_id']
         year_row = row['year_{}'.format(scenario)]
-        ha = int(row['TOTAAL'])
+        ha = int(row['max_urbanity'])
         
         if ha > 0 and year_row>0:
             steps = int((year_row-2020) /5 )
@@ -84,9 +84,10 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
             const = num_pieces(ha, steps)
             for x in range(len(const)):
                 year_new = int(year_row - x*5)
-                gdf.at[unique_id, '{0}_{1}_TOTAAL'.format(year_new,scenario) ] = const[x]
+                gdf.at[unique_id, '{1}_{0}_max_urbanity'.format(year_new, scenario) ] = const[x]
     
-    grid = gpd.read_file(_grid, crs='EPSG:3035')
+    gdf.to_file(dst_path_temp, driver='GeoJSON')
+    """grid = gpd.read_file(_grid, crs='EPSG:3035')
     
     _overlay = gpd.overlay(grid, gdf, how='intersection')
     _overlay.drop(['geometry'], inplace=True, axis=1)
@@ -100,7 +101,7 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
     #ndf = joined[['FID', 'geometry', 'fid_project', 'housing', 'name', '{}_total'.format(year)]]
     ndf = joined.rename(columns={'FID': 'fid'})
     if 'fid' not in ndf.columns: 
-        ndf = ndf.assign(fid=range(len(ndf)))
+        ndf = ndf.assign(fid=range(len(ndf)))"""
     """ndf = ndf[[ 'fid', 'geometry', 'NAAMPLAN', 'TOTAAL', 
        'WTYPGGBC', 'WTYPAPPC', 'WTYPONBC', 'HRKPONBC', 'rent', 'buy', 
        'Sociale_huur', 'Middeldure_huur', 'Dure_huur', 'Dure_huur_of_Koop',
@@ -108,8 +109,8 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
        'fid_project', '2025_{}_TOTAAL'.format(scenario), '2030_{}_TOTAAL'.format(scenario), '2040_{}_TOTAAL'.format(scenario),
        '2035_{}_TOTAAL'.format(scenario), '2045_{}_TOTAAL'.format(scenario), '2050_{}_TOTAAL'.format(scenario), '2020_{}_TOTAAL'.format(scenario)]]
     """
-    print(' ----- Creating intermediate file with the total m2 split to different years  ----- ')
-    ndf.to_file(dst_path_temp, driver='GeoJSON')
+    """print(' ----- Creating intermediate file with the total m2 split to different years  ----- ')
+    ndf.to_file(dst_path_temp, driver='GeoJSON')"""
 
 def randomDivisionToGridCells(year, scenario, dst_path_temp, dst_vector, raster_file, column_name, current_yearPath, 
                               previous_yearPath, temp_raster,  dst_raster_temp, dst_raster, divisionFunction = 'random'):

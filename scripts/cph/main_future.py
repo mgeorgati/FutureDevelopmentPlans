@@ -1,23 +1,20 @@
 # Main Script for data preparation -------------------------------------------------------------------------------------
 # imports
-import os
-import sys
-import geopandas as gpd
-base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-sys.path.append(base_dir + '/data_prep/')
-from mainFunctions.basic import zonalStat
+
 from config.globalVariables import futureDataFolder
 from config.cph_config import city,  raster_file, cur, conn, engine, temp_shp_path
 from config.globalVariables import gdal_path, gdal_rasterize_path
 print('Modules successfully loaded')
 
-from calc_future_infra import trainProcess
-from randomAssignement import random_creation, randomDivisionToGridCells
+from allcases.calc_future_infra import trainProcess
+from cph.randomAssignement import random_creation, randomDivisionToGridCells
 # This script controls all the processes for the production of future layers for disaggregation: housing area, building height, construction year, proximity to train and metro stations, 
 # Baseline year 2020, baseline scenario= bs, zero-migration scenario = zms
 scenario = 'bs'
-data_path = futureDataFolder + '/{0}/trainingdata/'.format(city)
+data_path = futureDataFolder 
 
 # Creating Isochones for each year for train stations and counting the accessibility of each cell  
 init_trainProcess = "no" 
@@ -27,7 +24,7 @@ trainProcess02 = "no"
 trainProcess03 = "yes"
 
 # Creating random distribution of residential projects to years and grid cells
-init_residentialProcess= "yes"
+init_residentialProcess= "no"
 divideHousingAreaToYears = 'yes'
 divideHousingAreaToGridCells = 'yes'
 
@@ -36,7 +33,7 @@ temp_tif = data_path + '/tif/'
 
 if init_trainProcess == "yes": 
     src_file = data_path + "/shp/{0}_trainst.geojson".format(city)   
-    year_list = [2035, 2040, 2045, 2050]#,2025, 2030, 2035, 2040, 2045, 2050]
+    year_list = [2025, 2030, 2035, 2040, 2045, 2050]#,2025, 2030, 2035, 2040, 2045, 2050]
     transport_means = '{}_trainst'.format(scenario) 
     # Processing train and metro Station data to postgres--------------------------------------------------------------------------------------
     for year in year_list:

@@ -1,7 +1,7 @@
-import sys,os
-sys.path.append('C:/FUME/PopNetV2/data_prep/mainFunctions/') 
-from format_conversions import vectortoDB, dbTOraster
-from calc_Isochrones import computeIsochrones, calculateCountIsochrones
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from mainFunctions.format_conversions import vectortoDB, dbTOraster
+from mainFunctions.calc_Isochrones import computeIsochrones, calculateCountIsochrones
 
 
 def trainProcess(trainProcess00, trainProcess01, trainProcess02, trainProcess03, src_file, city, cur,conn,
@@ -18,3 +18,4 @@ def trainProcess(trainProcess00, trainProcess01, trainProcess02, trainProcess03,
         column_name = '{0}_{1}_count'.format(year, transport_means)
         layerName = '{0}_{1}'.format(year,transport_means)
         dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path, column_name, layerName)
+        

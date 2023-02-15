@@ -18,7 +18,7 @@ def createTemplate(city, temp_shp_path, temp_tif_path, raster_file, gdal_rasteri
     os.remove(temp_shp_path + "/{0}_cs_updated.geojson".format(city))
     
 def calculateUrbanAtlas(city,year,ancillary_data_folder_path, temp_shp_path, temp_tif_path, raster_file, conn,cur, engine, gdal_rasterize_path, python_scripts_folder_path):
-    print(ancillary_data_folder_path + "/urban_atlas/{}/Data/*.gpkg")
+    print(ancillary_data_folder_path + "/urban_atlas//Shapefiles/*.gpkg")
     if year == 2006:
         src_file = glob.glob(ancillary_data_folder_path + "/urban_atlas/{0}/Shapefiles/*{0}*.shp".format(year))
         print(src_file)
@@ -38,7 +38,8 @@ def calculateUrbanAtlas(city,year,ancillary_data_folder_path, temp_shp_path, tem
         print(df.head(5))
         print(df['land_use'].unique())
     else:
-        src_file = glob.glob(ancillary_data_folder_path + "/urban_atlas/{}/Data/*.gpkg".format(year))
+        print(ancillary_data_folder_path + "/urban_atlas/{0}/Data/*.gpkg".format(year))
+        src_file = glob.glob(ancillary_data_folder_path + "/urban_atlas/{0}/Data/*.gpkg".format(year))
         print(src_file)
         df = gpd.read_file(src_file[0])
         columnName = 'class_{}'.format(year)
@@ -64,24 +65,25 @@ def calculateUrbanAtlas(city,year,ancillary_data_folder_path, temp_shp_path, tem
         #'Fast transit roads and associated land', 'Other roads and associated land', 'Railways and associated land', 'Land without current use' 
         #'Construction sites'   
         #'Water' 'Wetlands' 
-    bbox = gpd.read_file(temp_shp_path + "/{}_bbox.gpkg".format(city))
-    
-    ndf = gpd.clip(df, bbox)
-    for i in df['land_use'].unique().tolist(): #,'water'
+    bbox = gpd.read_file(temp_shp_path + "/{}_bbox.geojson".format(city))
+    print(df['land_use'].unique().tolist())
+    ndf = gpd.clip(df, bbox) 
+    for i in [ 'urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas', 'infra_light', 'green_spaces', 'water']: #['urban_dense', 'urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas', 'infra_light', 'green_spaces', 'water']
         bdf = ndf.loc[ndf['land_use']== i]
-        print(bdf)
-        #bdf.to_postgis('{0}_ua_{2}_{1}'.format(city,i,year),engine)
+        #print(bdf)
+        bdf.to_postgis('{0}_ua_{2}_{1}'.format(city,i,year),engine)
         factor = 'ua_{1}_{0}'.format(i,year)
         calcPercentage(cur, conn, city, factor)
         
-        dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path +'/ua/', '{0}_coverage'.format(factor), '{0}'.format(factor))
-        createFolder(temp_tif_path +'/ua')
-        template = temp_tif_path + '/{}_template.tif'.format(city)
+        dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path +'/ua/', '{0}_coverage'.format(factor), '{0}'.format(factor)) #
+        #createFolder(temp_tif_path +'/ua')
+        #template = temp_tif_path + '/{}_template.tif'.format(city)
         
-        filePath = temp_tif_path + '/ua_{0}_{1}.tif'.format(i,year)
-        print("------------------------------ Fixing  ------------------------------")
-        cmds = 'python {0}/gdal_calc.py -A "{1}" -B "{4}" --A_band=1 --B_band=1 --outfile="{2}/ua/ua_{5}_{3}" --calc="A*B"'.format(python_scripts_folder_path, filePath, temp_tif_path, i, template,year )
-        subprocess.call(cmds, shell=True)
+        #filePath = temp_tif_path + '/ua_{0}_{1}.tif'.format(i,year)
+        #print("------------------------------ Fixing  ------------------------------")
+        #cmds = 'python {0}/gdal_calc.py -A "{1}" -B "{4}" --A_band=1 --B_band=1 --outfile="{2}/ua/ua_{5}_{3}" --calc="A*B"'.format(python_scripts_folder_path, filePath, temp_tif_path, i, template,year )
+        #print(cmds)
+        #subprocess.call(cmds, shell=True)
 
 def calcPercentage(cur, conn, city, factor):
     print("Set Coordinate system for GRID")
@@ -199,7 +201,7 @@ def calcPercentage(cur, conn, city, factor):
 
     # iterating through chunks
     for chunk in ids:
-        
+       
         # check if chunk is pure ocean
         cur.execute("SELECT {0}_iteration_grid.gid \
                             FROM {0}_iteration_grid, {0}_cs \
