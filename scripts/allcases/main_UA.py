@@ -11,7 +11,7 @@ from randomAssignement import random_creation
 from mainFunctions.format_conversions import dbTOraster
 city = 'grootams'
 year = 2020
-scenario = 'zms'
+scenario = 're'
 
 if city == 'grootams':
     from config.grootams_config import country, ancillary_data_folder_path, temp_shp_path,  temp_tif_path, raster_file, conn,cur, engine, futureDataFolder
@@ -21,7 +21,7 @@ elif city == 'ams':
 elif city == 'cph':
     from config.cph_config import country, ancillary_data_folder_path, temp_shp_path,  temp_tif_path, raster_file, conn,cur, engine
 elif city == 'crc':
-    from config.crc_config import country, ancillary_data_folder_path, temp_shp_path, temp_tif_path, raster_file, conn,cur, engine 
+    from config.crc_config import country, ancillary_data_folder_path, temp_shp_path, temp_tif_path, raster_file, conn,cur, engine, futureDataFolder
 elif city == 'rom':
     from config.rom_config import country, ancillary_data_folder_path, temp_shp_path,  temp_tif_path, raster_file, conn,cur, engine 
 
@@ -63,21 +63,25 @@ if init_template == "yes":
     createTemplate(city, temp_shp_path, temp_tif_path, raster_file, gdal_rasterize_path)"""
 if processUrbanAtlas == 'yes':
     calculateUrbanAtlas(city,year,ancillary_data_folder_path, temp_shp_path, temp_tif_path, raster_file, conn,cur, engine, gdal_rasterize_path, python_scripts_folder_path)
-    
-if divideHousingAreaToYears == 'yes':
-    futurePlansFile = futureDataFolder + "/shp/{0}_residential.geojson".format(city)
-    gridPath = os.path.dirname(futureDataFolder) + "/temp_shp/{}_grid.geojson".format(city)
-    dst_path_temp = futureDataFolder + "/shp/{0}_residential_{1}.geojson".format(city,scenario)
-    random_creation(futurePlansFile, gridPath, dst_path_temp, scenario)     
 
-if processUrbanAtlasFuture == 'yes':
-    for scenario in ['bs','zms']: #'bs', 
-        for year in [2020, 2025, 2030, 2035, 2040, 2045, 2050]:
-            calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engine)
+for scenario in ['re']: #, 'zms','bs', 'igc','eur', 're', 'war','   
+    if divideHousingAreaToYears == 'yes':
+        futurePlansFile = futureDataFolder + "/shp/{0}_residential.geojson".format(city)
+        gridPath = os.path.dirname(futureDataFolder) + "/temp_shp/{}_grid.geojson".format(city)
+        dst_path_temp = futureDataFolder + "/shp/{0}_residential_{1}.geojson".format(city,scenario)
+        random_creation(futurePlansFile, gridPath, dst_path_temp, scenario)     
 
-if rasterizeUrbanAtlasFuture == 'yes':
-    for scenario in ['bs']: #, 'zms'
-        for year in [2020, 2025, 2030, 2035, 2040, 2045, 2050]:
-            for i in ['urban_dense', 'urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas', 'infra_light', 'green_spaces', 'water']:
-                dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path +'/ua/', 'ua_{1}_{0}_{2}_coverage'.format(year, scenario, i), 'ua_{1}_{0}_{2}'.format(year, scenario, i)) 
+    if processUrbanAtlasFuture == 'yes':
+        
+            for year in [ 2020, 2025, 2030, 2035, 2040, 2045, 2050]: # 2025, 2030, 2035, 2040, 2045, 2050
+                calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engine)
+
+    if rasterizeUrbanAtlasFuture == 'yes':
+        
+            for i in ['urban_dense', 'urban_sparse','industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas', 'infra_light', 'green_spaces', 'water']:
+                for year in [ 2020, 2025, 2030, 2035, 2040, 2045, 2050]: #2020, 2025, 2030, 2035, 2040, 2045, 2050
+                    if year == 2018:
+                        dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path +'/ua/', 'ua_{0}_{2}_coverage'.format(year, scenario, i), 'ua_{0}_{2}'.format(year, scenario, i)) 
+                    else:
+                        dbTOraster(city, gdal_rasterize_path, engine, raster_file, temp_shp_path, temp_tif_path +'/ua/', 'ua_{1}_{0}_{2}_coverage'.format(year, scenario, i), 'ua_{1}_{0}_{2}'.format(year, scenario, i)) 
 

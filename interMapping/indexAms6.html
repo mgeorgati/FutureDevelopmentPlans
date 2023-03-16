@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+
+    <link rel="stylesheet" href="ol/ol.css" type="text/css">
+    <!--importOL CSS-->
+    <link rel="stylesheet" href="style.css" type="text/css">
+    <link rel="stylesheet" href="https://unpkg.com/ol-layerswitcher@4.0.0/dist/ol-layerswitcher.css" />
+    <!-- import OL JS -->
+    <script src="ol/dist/ol.js"></script>
+    <script src="https://unpkg.com/ol-layerswitcher@4.0.0"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.5.0/proj4.js"></script>
+    <title>OpenLayers example</title>
+
+</head>
+
+<body>
+    <h1> Future Development Plans in Europe </h1>
+    <div class="dropdown">
+        <button onclick="myFunction()" class="dropbtn">City</button>
+        <div id="myDropdown" class="dropdown-content">
+            <a href="#">Amsterdam</a>
+            <a href="#">Krakow</a>
+            <a href="#">Rome</a>
+        </div>
+    </div>
+
+    <h2> This map displays Groot Amsterdam</h2>
+    <div class="wrapper">
+        <div class="third">
+            <h4>Benchmark</h4>
+            <div id="roadMap" class="mapAms6"></div>
+        </div>
+        <div class="third">
+            <h4>Zero-migration</h4>
+            <div id="zmsMap" class="mapAms6"></div>
+        </div>
+        <div class="third">
+            <h4>War</h4>
+            <div id="warMap" class="mapAms6"></div>
+        </div>
+        <div class="third">
+            <h4>Intensifying Global Competition</h4>
+            <div id="igcMap" class="mapAms6"></div>
+        </div>
+        <div class="third">
+            <h4>Rising East</h4>
+            <div id="reMap" class="mapAms6"></div>
+        </div>
+        <div class="third">
+            <h4>EU Recovery</h4>
+            <div id="eurMap" class="mapAms6"></div>
+        </div>
+    </div>
+
+
+    <!-- Pointer events polyfill for old browsers, see https://caniuse.com/#feat=pointer -->
+    <script src="https://cdn.jsdelivr.net/npm/elm-pep@1.0.6/dist/elm-pep.js"></script>
+    <script type="module" src="ams_map6.js"> </script>
+    <div class="overlay_popup">
+        <span class='overlay_text' id='TreeName'></span><br>
+        <span class='overlay_text' id='TreeAge'></span><br>
+    </div>
+
+    <script>
+        /* When the user clicks on the button, 
+                                                                                                                                                        toggle between hiding and showing the dropdown content */
+        function myFunction() {
+            document.getElementById("myDropdown").classList.toggle("show");
+        }
+
+        // Close the dropdown if the user clicks outside of it
+        window.onclick = function(event) {
+            if (!event.target.matches('.dropbtn')) {
+                var dropdowns = document.getElementsByClassName("dropdown-content");
+                var i;
+                for (i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

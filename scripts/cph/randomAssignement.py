@@ -2,12 +2,11 @@ import pandas as pd
 import geopandas as gpd
 import random
 import subprocess
-import sys
-sys.path.append('C:/FUME/PopNetV2/data_prep/mainFunctions/') 
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from mainFunctions.format_conversions import shptoraster
 
-from format_conversions import shptoraster
-sys.path.append('C:/FUME/PopNetV2/data_prep/config/') 
-from globalVariables import gdal_rasterize_path, python_scripts_folder_path, ancillary_EUROdata_folder_path
+from config.globalVariables import gdal_rasterize_path, python_scripts_folder_path
 
 def decomposition(i):
     while i > 0:
@@ -46,7 +45,7 @@ def num_pieces(num, lenght):
         all_list = [0] * lenght
         n = random.randint(1, lenght)
         all_list[n] = num
-    elif num < 2*lenght : 
+    elif num < 3*lenght : 
         all_list = [0] * lenght
         n = random.randint(1, lenght)
         all_list[n] = num
@@ -88,13 +87,13 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
         unique_id = row['fid_project']
         name = row['name']
         year_row = row['year_{}'.format(scenario)]
-        ha = int(row['housingArea'])
+        ha = int(row['housingarea'])
         if ha > 0:
             steps = int((year_row-2020) /5 )
             const = num_pieces(ha,steps)
             for x in range(len(const)):
                 year_new = int(year_row - x*5)
-                gdf.at[unique_id, '{0}_{1}_housingArea'.format(year_new,scenario) ] = const[x]
+                gdf.at[unique_id, '{0}_{1}_housingarea'.format(year_new,scenario) ] = const[x]
     
     grid = gpd.read_file(_grid, crs='EPSG:3035')
     
@@ -107,10 +106,11 @@ def random_creation(futurePlansFile, _grid, dst_path_temp, scenario):
     joined = gpd.GeoDataFrame(grid_join.reset_index(), geometry='geometry', crs= 'EPSG:3035')
     #ndf = joined[['FID', 'geometry', 'fid_project', 'housing', 'name', '{}_total'.format(year)]]
     print(joined.head(4))
-    ndf = joined.rename(columns={'FID': 'fid'})
+    print(joined.columns)
+    ndf = joined.drop(columns={'fid'})
     if 'fid' not in ndf.columns: 
         ndf = ndf.assign(fid=range(len(ndf)))
-    print(ndf.head(3))
+    print(ndf.columns)
     print(' ----- Creating intermediate file with the total m2 split to different years  ----- ')
     ndf.to_file(dst_path_temp, driver='GeoJSON')
 
@@ -118,13 +118,13 @@ def randomDivisionToGridCells(year, scenario, dst_path_temp, dst_vector, raster_
                               previous_yearPath, dst_raster, divisionFunction = 'random'):
     df = gpd.read_file(dst_path_temp)
     print(df.head(5))
-    df = df[['fid', 'geometry', 'fid_project', 'housing', 'name', '{0}_{1}_housingArea'.format(year,scenario)]]
-    df = df.loc[df['{0}_{1}_housingArea'.format(year,scenario)] > 0 ]
+    df = df[['FID', 'geometry', 'fid_project', 'housing', 'name', '{0}_{1}_housingarea'.format(year,scenario)]]
+    df = df.loc[df['{0}_{1}_housingarea'.format(year,scenario)] > 0 ]
     #df = df.assign(fid=range(len(df)))
     for i in df.columns: 
         if i!='geometry': 
             df['{}'.format(i)] = df['{}'.format(i)].fillna(0)
-    df['total_size'] = df.groupby('fid_project')['fid'].transform('size') #the number of cells with the same fid_project
+    df['total_size'] = df.groupby('fid_project')['FID'].transform('size') #the number of cells with the same fid_project
     #df = df.sort_values('{0}_{1}_housingArea'.format(year,scenario), ascending=False).drop_duplicates('fid').sort_index()
     print(df.head(2))
     has = []
@@ -135,7 +135,7 @@ def randomDivisionToGridCells(year, scenario, dst_path_temp, dst_vector, raster_
         projects.append(x)
         cells = df.loc[df.fid_project==x, 'total_size'].values[0]
         cellsTotal.append(cells)
-        ha = df.loc[df.fid_project==x, '{0}_{1}_housingArea'.format(year,scenario)].values[0]
+        ha = df.loc[df.fid_project==x, '{0}_{1}_housingarea'.format(year,scenario)].values[0]
         #has.append(ha)
         
         ndf = df.loc[df['fid_project'] == x]

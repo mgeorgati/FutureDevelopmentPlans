@@ -7,7 +7,7 @@ from mainFunctions.format_conversions import dbTOraster, shptoraster
 from mainFunctions.basic import createFolder
 
 
-def calcRest(cur, conn, feature, city, chunk, xFactor, cFactor, futProjTable):
+def calcRest(cur, conn, feature, city, chunk, xFactor, cFactor, futProjTable, scenario):
     # calculating URBAN SPARSE cover percentage - Intesects ---------------------
     cur.execute("WITH a AS (SELECT chunk_nr{1}.id \
                     FROM chunk_nr{1}, {5} WHERE ST_intersects(chunk_nr{1}.geometry, {5}.geometry) \
@@ -22,11 +22,11 @@ def calcRest(cur, conn, feature, city, chunk, xFactor, cFactor, futProjTable):
     # calculating URBAN SPARSE cover percentage - NOT intersecting
     cur.execute("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
                                             WHERE chunk_nr{1}.id not in ( \
-                                                SELECT chunk_nr{1}.id from chunk_nr{1}, grootams_futureprojects_bs \
-                                                    WHERE ST_intersects(chunk_nr{1}.geometry, grootams_futureprojects_bs.geometry))) \
+                                                SELECT chunk_nr{1}.id from chunk_nr{1}, {0}_futureprojects_{5} \
+                                                    WHERE ST_intersects(chunk_nr{1}.geometry, {0}_futureprojects_{5}.geometry))) \
                     UPDATE {0}_cover_analysis SET ua_{3}_{4}_coverage = ROUND(ua_{2}_{4}_coverage ::NUMERIC , 2) \
                         FROM a \
-                    WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, xFactor, cFactor, feature))
+                    WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, xFactor, cFactor, feature, scenario))
     conn.commit()
                 
 def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engine):
@@ -35,7 +35,7 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
 
     futtureProjectsPath = futureDataFolder + "/shp/{0}_residential_{1}.geojson".format(city,scenario)
     df = gpd.read_file(futtureProjectsPath)
-    
+    df = df.to_crs('EPSG:3035')
     futProjTable = '{0}_futureprojects_{1}'.format(city, scenario)
     # Create Table for future projects
     print("---------- Creating table for country, if it doesn't exist ----------")
@@ -48,9 +48,13 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
     else:
         print("Creating {0}".format(futProjTable))
         df.to_postgis('{0}'.format(futProjTable),engine)
-        
+    
+    print("Set Coordinate system for cover analysis")
+    cur.execute("SELECT UpdateGeometrySRID('{0}_cover_analysis','geometry',3035);;".format(city))  # 4.3 sec
+    conn.commit()
+    
     print("Set Coordinate system for GRID")
-    cur.execute("SELECT UpdateGeometrySRID('{0}_grid','geometry',3035);;".format(city))  # 4.3 sec
+    cur.execute("SELECT UpdateGeometrySRID('{0}','geometry',3035);;".format(futProjTable))  # 4.3 sec
     conn.commit()
 
     # Check if cover analysis table exists -------------------------------------------------------------------------------------------------------------------
@@ -84,9 +88,10 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
         previousfactor = 'ua_{2}_{1}_{0}'.format(i,previousYear,scenario )
         xFactor = '{0}_{1}'.format(scenario, year-5)
     
-    if scenario == 'zms' : x_factor = 20 #the range of change in the distribution of the urban density
-    elif scenario == 'bs' : x_factor = 10
-    else: x_factor == 5
+    x_factor = None
+    #if scenario == 'zms' or scenario == 'zms' : x_factor = 15 #the range of change in the distribution of the urban density
+    #elif scenario == 'bs' : x_factor = 5
+    #else: x_factor == 5
     
     cFactor =  '{0}_{1}'.format(scenario, year)
     for i in ['urban_dense','infra_light', 'green_spaces', 'water', 'urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas' ]: # 'infra_light', 'green_spaces', 'water','urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas']: # 
@@ -160,7 +165,7 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
     #-------------------------------------------------------------------------------------------------------------------
     print("Set Coordinate system for ITERATION GRID")
     cur.execute("SELECT UpdateGeometrySRID('{0}_iteration_grid','geometry',3035);;".format(city))  # 4.3 sec
-    conn.commit() 
+    conn.commit()  
     
     # getting id number of chunks within the iteration grid covering the city ---------------------------------------
     ids = []
@@ -181,7 +186,6 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
     
     # iterating through chunks
     for chunk in ids:
-        
         # check if chunk is pure ocean
         cur.execute("SELECT {0}_iteration_grid.gid \
                             FROM {0}_iteration_grid, {2} \
@@ -215,57 +219,34 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
             # create index on chunk
             cur.execute("CREATE INDEX chunk_nr{0}_gix ON chunk_nr{0} USING GIST (geometry);".format(chunk))  
             conn.commit()
-            print("WITH a AS (SELECT chunk_nr{1}.id, max({2}.{7}_{6}_max_urbanity) as ua \
-                            FROM chunk_nr{1}, {2} WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry) \
-                            GROUP BY id) \
-                            UPDATE {0}_cover_analysis t1 SET ua_{3}_urban_dense_coverage =  CASE  \
-                                WHEN t1.ua_{5}_urban_dense_coverage = 0 THEN ROUND( (random() * ((a.ua + {4}) - (a.ua-{4})) + (a.ua-{4}) )::NUMERIC, 2) \
-                                WHEN t1.ua_{5}_urban_dense_coverage > 0 AND t1.ua_{5}_urban_dense_coverage < a.ua THEN ROUND( (random() * (a.ua  - t1.ua_{5}_urban_dense_coverage) + t1.ua_{5}_urban_dense_coverage )::NUMERIC, 2) \
-                                ELSE ROUND(t1.ua_{5}_urban_dense_coverage ::NUMERIC , 2) \
-                                END \
-                                FROM a \
-                            WHERE a.id = t1.id;".format(city, chunk, futProjTable, cFactor, x_factor, xFactor, year, scenario ))
+                        
             # calculating new urban cover percentage for cells in chunk that intersect  ---------------------
-            cur.execute("WITH a AS (SELECT chunk_nr{1}.id, max({2}.{7}_{6}_max_urbanity) as ua \
-                            FROM chunk_nr{1}, {2} WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry) \
+            cur.execute("WITH a AS (SELECT chunk_nr{1}.id, max({2}.{7}_{6}_max_urbanity)::double precision as ua \
+                            FROM chunk_nr{1}, {2} WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry)  \
                             GROUP BY id) \
                             UPDATE {0}_cover_analysis t1 SET ua_{3}_urban_dense_coverage =  CASE  \
-                                WHEN t1.ua_{5}_urban_dense_coverage = 0 THEN ROUND( (random() * ((a.ua + {4}) - (a.ua-{4})) + (a.ua-{4}) )::NUMERIC, 2) \
-                                WHEN t1.ua_{5}_urban_dense_coverage > 0 AND t1.ua_{5}_urban_dense_coverage < a.ua THEN ROUND( (random() * (a.ua  - t1.ua_{5}_urban_dense_coverage) + t1.ua_{5}_urban_dense_coverage )::NUMERIC, 2) \
-                                ELSE ROUND(t1.ua_{5}_urban_dense_coverage ::NUMERIC , 2) \
-                                END \
-                                FROM a \
-                            WHERE a.id = t1.id;".format(city, chunk, futProjTable, cFactor, x_factor, xFactor, year, scenario ))
-            ### When it is lower than the previous year
-            conn.commit()
-            print("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
-                                        WHERE chunk_nr{1}.id not in ( \
-                                            SELECT chunk_nr{1}.id from chunk_nr{1}, grootams_futureprojects_bs \
-                                                WHERE ST_intersects(chunk_nr{1}.geometry, grootams_futureprojects_bs.geometry))) \
-                            UPDATE {0}_cover_analysis SET ua_{3}_urban_dense_coverage = ROUND(ua_{5}_urban_dense_coverage ::NUMERIC , 2)  \
+                            WHEN ua IS NULL OR ua < t1.ua_{5}_urban_dense_coverage THEN ROUND(t1.ua_{5}_urban_dense_coverage ::NUMERIC , 2) \
+                            ELSE ROUND( (random() * (a.ua  - t1.ua_{5}_urban_dense_coverage) + t1.ua_{5}_urban_dense_coverage )::NUMERIC, 2) \
+                            END \
                             FROM a \
-                            WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, futProjTable, cFactor, x_factor, xFactor, year, scenario ))
+                            WHERE a.id = t1.id;".format(city, chunk, futProjTable, cFactor, x_factor, xFactor, year, scenario ))
+            ### When it is lower than the previous year #ELSE ROUND(t1.ua_{5}_urban_dense_coverage ::NUMERIC , 2) \
+                #WHEN t1.ua_{5}_urban_dense_coverage = 0 THEN ABS(ROUND( (random() * ((a.ua + {4}) - (a.ua-{4})) + (a.ua-{4}) )::NUMERIC, 2)) \
+                #WHEN t1.ua_{5}_urban_dense_coverage > 0 AND t1.ua_{5}_urban_dense_coverage < a.ua THEN ROUND( (random() * (a.ua  - t1.ua_{5}_urban_dense_coverage) + t1.ua_{5}_urban_dense_coverage )::NUMERIC, 2) \
+                #ELSE ROUND(t1.ua_{5}_urban_dense_coverage ::NUMERIC , 2) \
+            conn.commit()
             
             # calculating new urban cover percentage where in chunk but NOT intersecting 
             cur.execute("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
                                         WHERE chunk_nr{1}.id not in ( \
-                                            SELECT chunk_nr{1}.id from chunk_nr{1}, grootams_futureprojects_bs \
-                                                WHERE ST_intersects(chunk_nr{1}.geometry, grootams_futureprojects_bs.geometry))) \
+                                            SELECT chunk_nr{1}.id from chunk_nr{1}, {0}_futureprojects_{7} \
+                                                WHERE ST_intersects(chunk_nr{1}.geometry, {0}_futureprojects_{7}.geometry)))  \
                             UPDATE {0}_cover_analysis SET ua_{3}_urban_dense_coverage = ROUND(ua_{5}_urban_dense_coverage ::NUMERIC , 2)  \
                             FROM a \
                             WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, futProjTable, cFactor, x_factor, xFactor, year, scenario ))
             ### When it is lower than the previous year
             conn.commit()
-            print("WITH a AS (SELECT chunk_nr{1}.id \
-                            FROM chunk_nr{1}, {2} WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry) \
-                            GROUP BY id) \
-                            UPDATE {0}_cover_analysis t1 SET ua_{4}_infra_light_coverage = CASE  \
-                                WHEN t1.ua_{3}_urban_dense_coverage = ROUND(t1.ua_{4}_urban_dense_coverage ::NUMERIC,2) THEN ROUND(t1.ua_{3}_infra_light_coverage ::NUMERIC,2) \
-                                WHEN t1.ua_{3}_urban_dense_coverage < t1.ua_{4}_urban_dense_coverage THEN ROUND( (random() * (((100 - t1.ua_{4}_urban_dense_coverage) - 0) + 0) )::NUMERIC,2) \
-                                END\
-                                FROM a \
-                            WHERE a.id = t1.id;".format(city, chunk, futProjTable, xFactor, cFactor))
-            
+        
             # calculating LIGHT INFRA cover percentage - Intesects ---------------------
             cur.execute("WITH a AS (SELECT chunk_nr{1}.id \
                             FROM chunk_nr{1}, {2} WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry) \
@@ -277,13 +258,7 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
                                 FROM a \
                             WHERE a.id = t1.id;".format(city, chunk, futProjTable, xFactor, cFactor))
             conn.commit()
-            print("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
-                                        WHERE chunk_nr{1}.id not in ( \
-                                            SELECT chunk_nr{1}.id from chunk_nr{1}, {2} \
-                                                WHERE ST_intersects(chunk_nr{1}.geometry, {2}.geometry))) \
-                            UPDATE {0}_cover_analysis SET ua_{4}_infra_light_coverage = ROUND(ua_{3}_infra_light_coverage ::NUMERIC , 2) \
-                            FROM a \
-                            WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, futProjTable, xFactor, cFactor))
+    
             # calculating LIGHT INFRA cover percentage - NOT intersecting  
             cur.execute("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
                                         WHERE chunk_nr{1}.id not in ( \
@@ -308,17 +283,17 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
             # calculating GREEN SPACES cover percentage - NOT intersecting
             cur.execute("WITH a AS (SELECT chunk_nr{1}.id FROM chunk_nr{1} \
                                         WHERE chunk_nr{1}.id not in ( \
-                                            SELECT chunk_nr{1}.id from chunk_nr{1}, grootams_futureprojects_bs \
-                                                WHERE ST_intersects(chunk_nr{1}.geometry, grootams_futureprojects_bs.geometry))) \
+                                            SELECT chunk_nr{1}.id from chunk_nr{1}, {0}_futureprojects_{5} \
+                                                WHERE ST_intersects(chunk_nr{1}.geometry, {0}_futureprojects_{5}.geometry))) \
                             UPDATE {0}_cover_analysis SET ua_{4}_green_spaces_coverage = ROUND(ua_{3}_green_spaces_coverage ::NUMERIC , 2) \
                                 FROM a \
-                            WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, futProjTable, xFactor, cFactor))
+                            WHERE a.id = {0}_cover_analysis.id;".format(city, chunk, futProjTable, xFactor, cFactor, scenario))
             conn.commit()
             
             ###############################################################################
             for i in [ 'water', 'urban_sparse', 'industry_commerce', 'infra_heavy', 'agriculture', 'natural_areas']: # ]
-                calcRest(cur, conn, i, city, chunk, xFactor, cFactor, futProjTable)
-            
+                calcRest(cur, conn, i, city, chunk, xFactor, cFactor, futProjTable, scenario)
+                
             
             # drop chunk_nr table
             cur.execute("DROP TABLE chunk_nr{0};".format(chunk))  # 22 ms
@@ -330,7 +305,7 @@ def calcUrbanAtlasFuture(cur, conn, city, year, futureDataFolder, scenario, engi
             # calculate single chunk query time in minutes
             total = (t1 - t0) / 60
             print("Chunk number: {0} took {1} minutes to process".format(chunk, total))
-        
+
     # stop total query time timer
     stop_query_time = time.time()
 
