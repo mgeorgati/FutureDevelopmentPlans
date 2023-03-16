@@ -45,9 +45,9 @@ processUrbanAtlas = 'no'
 #The 2nd step is to split the level of urbanity to the different examined years in 5-year intervals  
 divideHousingAreaToYears = 'no'
 # The 3rd step is to calculate the next year urban fabric layer and update the rest as well
-processUrbanAtlasFuture = 'yes'
+processUrbanAtlasFuture = 'no'
 # The 4rth step is to rasterize the corresponding layers for each scenario, year and land use
-rasterizeUrbanAtlasFuture = 'no'
+rasterizeUrbanAtlasFuture = 'yes'
 """
 if setUpDB == 'yes': 
     initPostgis(cur, conn)
